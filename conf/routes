@@ -12,5 +12,7 @@ GET     /assets/*file               controllers.Assets.versioned(path="/public",
 GET     /mine                       controllers.BlockchainController.mine
 GET     /chain                      controllers.BlockchainController.fullChain
 POST    /transactions/new           controllers.BlockchainController.newTransaction
+POST    /nodes/register             controllers.BlockchainController.registerNodes
+GET     /nodes/resolve             controllers.BlockchainController.consensus
 
 

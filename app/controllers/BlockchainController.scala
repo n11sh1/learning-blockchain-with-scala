@@ -3,7 +3,8 @@ package controllers
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import models.{Blockchain, Transaction}
+import models.api.ChainApi
+import models.{Blockchain, NodeManager, Transaction}
 import play.api.libs.json._
 import play.api.mvc.{AbstractController, AnyContent, ControllerComponents, Request}
 
@@ -48,10 +49,35 @@ class BlockchainController @Inject()(cc: ControllerComponents) extends AbstractC
   }
 
   def fullChain() = Action { implicit  request: Request[AnyContent] =>
-    val response = Json.obj(
-      "chain" -> Json.toJson(blockchain.chain),
-      "length" -> blockchain.chain.length
-    )
+    val response = Json.toJson(new ChainApi(blockchain.chain, blockchain.chain.length))
     Ok(response)
+  }
+
+  def registerNodes() = Action(validateJson[NodeManager]) { implicit request =>
+    blockchain.addNewNode(request.body.nodes)
+
+    val response = Json.obj(
+      "message" -> "New nodes have been added",
+      "total_nodes" -> Json.toJson(blockchain.nodeManager.nodes)
+    )
+    Created(response)
+  }
+
+  def consensus() = Action { implicit request =>
+    val replaced = blockchain.resolveConflicts()
+
+    if (replaced) {
+      val response = Json.obj(
+        "message" -> "Our chain was replaced",
+        "new_chain" -> blockchain.chain
+      )
+      Ok(response)
+    } else {
+      val response = Json.obj(
+        "message" -> "Our chain is authritative",
+        "new_chain" -> blockchain.chain
+      )
+      Ok(response)
+    }
   }
 }

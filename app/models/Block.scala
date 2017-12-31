@@ -1,6 +1,6 @@
 package models
 
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{Json, Reads, Writes}
 
 case class Block(
   index: Long,
@@ -12,4 +12,5 @@ case class Block(
 
 case object Block {
   implicit val blockWrite: Writes[Block] = Json.writes[Block]
+  implicit val blockRead: Reads[Block] = Json.reads[Block]
 }

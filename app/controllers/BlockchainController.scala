@@ -3,24 +3,29 @@ package controllers
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 
-import model.{Blockchain, Transaction}
-import play.api.libs.json.Json
+import models.{Blockchain, Transaction}
+import play.api.libs.json._
 import play.api.mvc.{AbstractController, AnyContent, ControllerComponents, Request}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class BlockchainController @Inject()(cc: ControllerComponents) extends AbstractController(cc) {
   val blockchain = Blockchain()
-  val uuid = UUID.randomUUID.toString.replace("-", "")
+  val nodeIdentifier = UUID.randomUUID.toString.replace("-", "")
+
+  def validateJson[A : Reads] = parse.json.validate(
+    _.validate[A].asEither.left.map(e => BadRequest(JsError.toJson(e)))
+  )
 
   def mine() = Action { implicit request: Request[AnyContent] =>
     val lastBlock = blockchain.lastBlock
     val lastProof = lastBlock.proof
     val proof = blockchain.proofOfWork(lastProof)
 
-    blockchain.addNewTransaction(new Transaction("0", uuid, 1))
+    blockchain.addNewTransaction(new Transaction("0", nodeIdentifier, 1))
 
-    val previousHash = blockchain.sha256Hash(lastBlock.toString)
-    val block = blockchain.createNewBlock(proof, Option(previousHash))
+    val block = blockchain.createNewBlock(proof)
 
     val response = Json.obj(
       "message" -> "New Block Forged",
@@ -33,8 +38,13 @@ class BlockchainController @Inject()(cc: ControllerComponents) extends AbstractC
     Ok(response)
   }
 
-  def newTransaction() = Action { implicit request: Request[AnyContent] =>
-    Ok
+  def newTransaction() = Action(validateJson[Transaction]) { implicit request =>
+    val index = blockchain.addNewTransaction(request.body)
+
+    val response = Json.obj(
+      "message" -> f"Transaction will be added to Block $index"
+    )
+    Ok(response)
   }
 
   def fullChain() = Action { implicit  request: Request[AnyContent] =>
